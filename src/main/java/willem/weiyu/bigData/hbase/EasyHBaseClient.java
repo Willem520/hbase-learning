@@ -4,6 +4,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -13,55 +15,54 @@ import java.io.IOException;
  * @create 2018/5/16 13:25
  * @since 1.0.0
  */
-public class HBaseApp {
+public class EasyHBaseClient {
+    private Logger log = LoggerFactory.getLogger(getClass());
+
     private static final String ROW_FORMAT = "{\"rowKey\":\"%s\", \"columnFamily\":\"%s\", \"column\":\"%s\", \"value\":\"%s\", \"timestamp\":\"%s\"}";
     private final Connection conn;
     private final Admin admin;
 
-    public HBaseApp() throws IOException {
-        Configuration conf = HBaseConfiguration.create();
-        conn = ConnectionFactory.createConnection(conf);
-        admin = conn.getAdmin();
+    public static class Builder{
+        public static EasyHBaseClient create() throws IOException {
+            return new EasyHBaseClient();
+        }
     }
 
-    public static void main(String[] args) throws IOException {
-        HBaseApp hbase = new HBaseApp();
-        //列出所有表
-//        hbase.listTables();
-        //添加数据
-        //hbase.add("weiyu_hbase","0001","fm1","age","111");
-        // 查询数据
-        // hbase.get("weiyu_hbase","0001");
-        hbase.scan("weiyu_hbase");
-        // 删除数据
-//        hbase.delete("weiyu_hbase","0001","fm1","age");
+    private EasyHBaseClient() throws IOException {
+        Configuration conf = HBaseConfiguration.create();
+        conf.set("hbase.zookeeper.quorum","10.26.27.81");
+        conn = ConnectionFactory.createConnection(conf);
+        admin = conn.getAdmin();
     }
 
     public void listTables() throws IOException {
         TableName[] tableNames = admin.listTableNames();
         for (TableName tableName : tableNames) {
-            System.out.println("======namespace:" + tableName.getNamespaceAsString() + ",tablename:" + tableName.getNameAsString());
+            log.info("******namespace:{}, tablename:{}", tableName.getNamespaceAsString(), tableName.getNameAsString());
+            System.out.println(String.format("******namespace:%s, tablename:%s",tableName.getNamespaceAsString(), tableName.getNameAsString()));
         }
     }
 
-    public void createTable() throws IOException {
+    public void createTable(String tableName) throws IOException {
         //设置表名
-        TableName tableName = TableName.valueOf("weiyu_hbase");
-        if (admin.tableExists(tableName)) {
-            System.out.println("======表已存在：" + tableName.getNameAsString());
+        TableName tableN = TableName.valueOf(tableName);
+        if (admin.tableExists(tableN)) {
+            log.warn("******表已存在:{}", tableN.getNameAsString());
+            System.out.println(String.format("******表已存在:%s",tableN.getNameAsString()));
             return;
         }
         HColumnDescriptor columnDescriptor = new HColumnDescriptor("fm1").setVersions(3, 5);
-        HTableDescriptor tableDescriptor = new HTableDescriptor(tableName).addFamily(columnDescriptor);
+        HTableDescriptor tableDescriptor = new HTableDescriptor(tableN).addFamily(columnDescriptor);
         admin.createTable(tableDescriptor);
     }
 
-    public void deleteTable() throws IOException {
-        TableName tableName = TableName.valueOf("weiyu_hbase");
-        if (admin.tableExists(tableName)) {
-            admin.disableTable(tableName);
-            admin.deleteTable(tableName);
-            System.out.println("======表已删除");
+    public void deleteTable(String tableName) throws IOException {
+        TableName tableN = TableName.valueOf(tableName);
+        if (admin.tableExists(tableN)) {
+            admin.disableTable(tableN);
+            admin.deleteTable(tableN);
+            log.info("******表已删除:{}", tableName);
+            System.out.println(String.format("******表已删除:%s", tableName));
         }
     }
 
@@ -78,7 +79,8 @@ public class HBaseApp {
         Get get = new Get(Bytes.toBytes(rowKey));
         Result result = table.get(get);
         if (result == null) {
-            System.out.println("======rowKey为" + rowKey + "的数据不存在");
+            log.warn("******rowKey[{}]在table[{}]中不存在", rowKey, tableName);
+            System.out.println(String.format("******rowKey[%s]在table[%s]中不存在", rowKey, tableName));
             return;
         }
         show(result);
@@ -105,6 +107,15 @@ public class HBaseApp {
         table.close();
     }
 
+    public void stop(){
+        try {
+            if (conn != null)
+                conn.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void show(Result result) {
         Cell[] cells = result.rawCells();
         for (Cell cell : cells) {
@@ -117,4 +128,6 @@ public class HBaseApp {
             ));
         }
     }
+
+
 }

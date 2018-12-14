@@ -10,35 +10,35 @@ import java.io.IOException;
  * @create 2018/6/20 15:00
  * @since 1.0.0
  */
-public class HBaseAppTest {
-    private HBaseApp hbase;
-
-    public HBaseAppTest() throws IOException {
-        hbase = new HBaseApp();
-    }
+public class EasyHBaseClientTest {
 
     @Test
     public void testList() throws IOException {
-        hbase.listTables();
+        EasyHBaseClient.Builder.create().listTables();
     }
 
     @Test
     public void testCreate() throws IOException {
-        hbase.createTable();
+        EasyHBaseClient.Builder.create().createTable("test");
     }
 
     @Test
     public void testDelete() throws IOException {
-        hbase.deleteTable();
+        EasyHBaseClient.Builder.create().deleteTable("");
     }
 
     @Test
     public void testAdd() throws IOException {
-        hbase.add("weiyu_hbase","0001","fm1","name","weiyu");
+        EasyHBaseClient.Builder.create().add("weiyu_hbase","0001","fm1","name","weiyu");
     }
 
     @Test
     public void testGet() throws IOException {
-        hbase.get("weiyu_hbase","0001");
+        EasyHBaseClient.Builder.create().get("test","1");
+    }
+
+    @Test
+    public void testScan() throws IOException {
+        EasyHBaseClient.Builder.create().scan("test");
     }
 }
