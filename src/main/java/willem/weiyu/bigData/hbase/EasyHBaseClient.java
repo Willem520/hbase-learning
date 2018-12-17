@@ -22,7 +22,7 @@ public class EasyHBaseClient {
     private final Connection conn;
     private final Admin admin;
 
-    public static class Builder{
+    public static class Builder {
         public static EasyHBaseClient create() throws IOException {
             return new EasyHBaseClient();
         }
@@ -30,7 +30,7 @@ public class EasyHBaseClient {
 
     private EasyHBaseClient() throws IOException {
         Configuration conf = HBaseConfiguration.create();
-        conf.set("hbase.zookeeper.quorum","10.26.27.81");
+        conf.set("hbase.zookeeper.quorum", "10.26.27.81");
         conn = ConnectionFactory.createConnection(conf);
         admin = conn.getAdmin();
     }
@@ -39,7 +39,7 @@ public class EasyHBaseClient {
         TableName[] tableNames = admin.listTableNames();
         for (TableName tableName : tableNames) {
             log.info("******namespace:{}, tablename:{}", tableName.getNamespaceAsString(), tableName.getNameAsString());
-            System.out.println(String.format("******namespace:%s, tablename:%s",tableName.getNamespaceAsString(), tableName.getNameAsString()));
+            System.out.println(String.format("******namespace:%s, tablename:%s", tableName.getNamespaceAsString(), tableName.getNameAsString()));
         }
     }
 
@@ -48,7 +48,7 @@ public class EasyHBaseClient {
         TableName tableN = TableName.valueOf(tableName);
         if (admin.tableExists(tableN)) {
             log.warn("******表已存在:{}", tableN.getNameAsString());
-            System.out.println(String.format("******表已存在:%s",tableN.getNameAsString()));
+            System.out.println(String.format("******表已存在:%s", tableN.getNameAsString()));
             return;
         }
         HColumnDescriptor columnDescriptor = new HColumnDescriptor("fm1").setVersions(3, 5);
@@ -58,12 +58,14 @@ public class EasyHBaseClient {
 
     public void deleteTable(String tableName) throws IOException {
         TableName tableN = TableName.valueOf(tableName);
-        if (admin.tableExists(tableN)) {
-            admin.disableTable(tableN);
-            admin.deleteTable(tableN);
-            log.info("******表已删除:{}", tableName);
-            System.out.println(String.format("******表已删除:%s", tableName));
+        if (!admin.tableExists(tableN)) {
+            log.warn("******表{}不存在", tableName);
+            return;
         }
+        admin.disableTable(tableN);
+        admin.deleteTable(tableN);
+        log.info("******表已删除:{}", tableName);
+        System.out.println(String.format("******表已删除:%s", tableName));
     }
 
     public void add(String tableName, String rowKey, String colFamily, String col, String value) throws IOException {
@@ -89,9 +91,9 @@ public class EasyHBaseClient {
     public void delete(String tableName, String rowKey, String colFamily, String col) throws IOException {
         Table table = conn.getTable(TableName.valueOf(tableName));
         Delete delete = new Delete(Bytes.toBytes(rowKey));
-        if (colFamily != null && col != null){
-            delete.addColumn(Bytes.toBytes(colFamily),Bytes.toBytes(col));
-        }else if (colFamily != null && col == null){
+        if (colFamily != null && col != null) {
+            delete.addColumn(Bytes.toBytes(colFamily), Bytes.toBytes(col));
+        } else if (colFamily != null && col == null) {
             delete.addFamily(Bytes.toBytes(colFamily));
         }
         table.delete(delete);
@@ -107,7 +109,7 @@ public class EasyHBaseClient {
         table.close();
     }
 
-    public void stop(){
+    public void stop() {
         try {
             if (conn != null)
                 conn.close();
