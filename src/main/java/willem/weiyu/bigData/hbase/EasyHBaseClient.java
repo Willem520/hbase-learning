@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * @author weiyu
@@ -20,7 +21,8 @@ public class EasyHBaseClient {
 
     private static final String ROW_FORMAT = "{\"rowKey\":\"%s\", \"columnFamily\":\"%s\", \"column\":\"%s\", \"value\":\"%s\", \"timestamp\":\"%s\"}";
     private final Connection conn;
-    private final Admin admin;
+
+    private static final int BUFFER_SIZE = 1024*1024*4;
 
     public static class Builder {
         public static EasyHBaseClient create() throws IOException {
@@ -32,10 +34,10 @@ public class EasyHBaseClient {
         Configuration conf = HBaseConfiguration.create();
         conf.set("hbase.zookeeper.quorum", "10.26.27.81");
         conn = ConnectionFactory.createConnection(conf);
-        admin = conn.getAdmin();
     }
 
     public void listTables() throws IOException {
+        Admin admin = conn.getAdmin();
         TableName[] tableNames = admin.listTableNames();
         for (TableName tableName : tableNames) {
             log.info("******namespace:{}, tablename:{}", tableName.getNamespaceAsString(), tableName.getNameAsString());
@@ -46,6 +48,7 @@ public class EasyHBaseClient {
     public void createTable(String tableName) throws IOException {
         //设置表名
         TableName tableN = TableName.valueOf(tableName);
+        Admin admin = conn.getAdmin();
         if (admin.tableExists(tableN)) {
             log.warn("******表已存在:{}", tableN.getNameAsString());
             System.out.println(String.format("******表已存在:%s", tableN.getNameAsString()));
@@ -58,6 +61,7 @@ public class EasyHBaseClient {
 
     public void deleteTable(String tableName) throws IOException {
         TableName tableN = TableName.valueOf(tableName);
+        Admin admin = conn.getAdmin();
         if (!admin.tableExists(tableN)) {
             log.warn("******表{}不存在", tableName);
             return;
@@ -74,6 +78,19 @@ public class EasyHBaseClient {
         put.addColumn(Bytes.toBytes(colFamily), Bytes.toBytes(col), Bytes.toBytes(value));
         table.put(put);
         table.close();
+    }
+
+    public void batchPut(String tableName, List<Put> puts) throws IOException {
+        BufferedMutatorParams params = new BufferedMutatorParams(TableName.valueOf(tableName))
+                .listener((exception, mutator1) -> {
+                    for (int i = 0; i < exception.getNumExceptions(); i++) {
+                        System.out.println("Failed to sent put " + exception.getRow(i) + ".");
+                    }
+                }).writeBufferSize(BUFFER_SIZE);
+        BufferedMutator mutator = conn.getBufferedMutator(params);
+        mutator.mutate(puts);
+        mutator.flush();
+        mutator.close();
     }
 
     public void get(String tableName, String rowKey) throws IOException {
