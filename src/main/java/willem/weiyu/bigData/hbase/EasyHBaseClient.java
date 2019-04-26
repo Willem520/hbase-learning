@@ -30,7 +30,7 @@ public class EasyHBaseClient {
         }
     }
 
-    private EasyHBaseClient() throws IOException {
+    public EasyHBaseClient() throws IOException {
         Configuration conf = HBaseConfiguration.create();
         conf.set("hbase.zookeeper.quorum", "10.26.27.81");
         conn = ConnectionFactory.createConnection(conf);
